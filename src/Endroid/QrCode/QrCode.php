@@ -306,6 +306,26 @@ class QrCode
         return $this->padding;
     }
 
+
+    public function setForeground(array $rgb = array(0, 0, 0))
+    {
+        $this->_foreground = $rgb;
+    }
+
+    public function getForeground() {
+        return $this->_foreground;
+    }
+
+    public function setBackground(array $rgb = array(255, 255, 255))
+    {
+        $this->_background = $rgb;
+    }
+
+    public function getBackground()
+    {
+        return $this->_background;
+    }
+
     /**
      * Return the image resource
      *
@@ -353,6 +373,8 @@ class QrCode
             throw new ImageFunctionUnknownException('QRCode: function image' . $format . ' does not exists.');
         }
 
+        $this->applyOverlay();
+
         if ($filename === null) {
             call_user_func('image'.$format, $this->image);
         } else {
@@ -386,6 +408,72 @@ class QrCode
         call_user_func('image'.$format, $this->image);
 
         return ob_get_clean();
+    }
+
+    /**
+     * Add an overlay image in the center. It should be square.
+     * 
+     * @param string $path
+     */
+    public function setOverlayImage($path)
+    {
+        $info = getimagesize($path);
+        if(false === ($info[0] == $info[1])) {
+            throw new \Exception('Overlay image '.$path.' is not square');
+        }
+        
+        $overlayImage = null;
+
+        if('image/jpeg' == $info['mime'] || 'image/jpg' == $info['mime']) {
+            $overlayImage = imagecreatefromjpeg($path);
+        } else if('image/gif' == $info['mime']) {
+            $overlayImage = imagecreatefromgif($path);
+        } else if('image/png' == $info['mime']) {
+            $overlayImage = imagecreatefrompng($path);
+        } else {
+            throw new \Exception('Image ' . $path . ' has an unhandled mime-type of '.$info['mime']);
+        }
+
+        $this->overlay_image = $overlayImage;
+        $this->overlay_image_info = $info;
+    }
+
+    private function applyOverlay()
+    {
+        /** @const int Error Correction Level Low (7%) */
+            // const LEVEL_LOW = 1;
+
+            // /** @const int Error Correction Level Medium (15%) */
+            // const LEVEL_MEDIUM = 0;
+
+            // * @const int Error Correction Level Quartile (25%) 
+            // const LEVEL_QUARTILE = 3;
+
+            // /** @const int Error Correction Level High (30%) */
+            // const LEVEL_HIGH = 2;
+        // check for ec level. Let's only allow this if EC level is high
+
+        if(self::LEVEL_HIGH > $this->getErrorCorrection()) {
+            throw new \Exception('Only QR codes with EC set to LEVEL_HIGH can be generated');
+        }
+
+        if(true == isset($this->overlay_image) && null !== $this->overlay_image) {
+            $size = floor($this->size * 0.3);
+
+            $resized = imagecreatetruecolor($size, $size);
+            $black = imagecolorallocate($resized, 0, 0, 0);
+
+            // Make the background transparent
+            imagecolortransparent($resized, $black);
+
+            // resize overlay
+            imagecopyresized($resized, $this->overlay_image, 0, 0, 0, 0, $size, $size, $this->overlay_image_info[0], $this->overlay_image_info[1]);
+
+            //imagealphablending($this->image, false);
+            //imagesavealpha($this->image, true);
+
+            imagecopymerge($this->image, $resized, floor(($this->size - $size)/2), floor(($this->size - $size)/2), 0, 0, $size, $size, 100);
+        }
     }
 
     /**
@@ -987,7 +1075,16 @@ class QrCode
 
 		imagecopyresampled($output_image,$base_image,$this->padding,$this->padding,4,4,$this->size - $this->padding * 2,$this->size - $this->padding * 2,$mib - 8,$mib - 8);
 
+
+        $whiteOutputIndex = imagecolorclosest($output_image, 255, 255, 255);
+        $blackOutputIndex = imagecolorclosest($output_image, 0, 0, 0);
+
+        imagecolorset($output_image, $whiteOutputIndex, $this->_background[0], $this->_background[1], $this->_background[2]);
+        imagecolorset($output_image, $blackOutputIndex, $this->_foreground[0], $this->_foreground[1], $this->_foreground[2]);
+
         $this->image = $output_image;
 	}
 
+    private $_foreground = array(0, 0, 0);
+    private $_background = array(255, 255, 255);
 }

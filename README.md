@@ -1,6 +1,7 @@
 Endroid QR Code
 ==============
 
+
 *By [endroid](http://endroid.nl/)*
 
 [![Build Status](https://secure.travis-ci.org/endroid/QrCode.png)](http://travis-ci.org/endroid/QrCode)

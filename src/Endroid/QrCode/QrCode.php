@@ -418,10 +418,11 @@ class QrCode
     public function setOverlayImage($path)
     {
         $info = getimagesize($path);
+
         if(false === ($info[0] == $info[1])) {
             throw new \Exception('Overlay image '.$path.' is not square');
         }
-        
+
         $overlayImage = null;
 
         if('image/jpeg' == $info['mime'] || 'image/jpg' == $info['mime']) {
@@ -465,12 +466,8 @@ class QrCode
 
             // Make the background transparent
             imagecolortransparent($resized, $black);
-
             // resize overlay
-            imagecopyresized($resized, $this->overlay_image, 0, 0, 0, 0, $size, $size, $this->overlay_image_info[0], $this->overlay_image_info[1]);
-
-            //imagealphablending($this->image, false);
-            //imagesavealpha($this->image, true);
+            imagecopyresampled($resized, $this->overlay_image, 0, 0, 0, 0, $size, $size, $this->overlay_image_info[0], $this->overlay_image_info[1]);
 
             imagecopymerge($this->image, $resized, floor(($this->size - $size)/2), floor(($this->size - $size)/2), 0, 0, $size, $size, 100);
         }
